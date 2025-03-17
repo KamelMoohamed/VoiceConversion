@@ -105,7 +105,7 @@ if __name__ == "__main__":
             c_lengths = (torch.ones(c.size(0)) * c.size(-1)).to(device)
 
             audio = net_g.infer(
-                c.to(device), wav_file=tgt, c_lengths=c_lengths
+                c.to(device), filenames=tgt, c_lengths=c_lengths
             )  # Pass everything to CUDA
 
             audio = audio[0][0].data.cpu().float().numpy()
