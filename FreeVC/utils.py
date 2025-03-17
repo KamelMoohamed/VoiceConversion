@@ -10,10 +10,8 @@ import numpy as np
 import torch
 import torchvision
 from scipy.io.wavfile import read
-from torch.nn import functional as F
 
 import hifigan
-from commons import sequence_mask
 from wavlm import WavLM, WavLMConfig
 
 MATPLOTLIB_FLAG = False
@@ -23,7 +21,7 @@ logger = logging
 
 
 def get_cmodel(rank):
-    checkpoint = torch.load("wavlm/WavLM-Large.pt")
+    checkpoint = torch.load("wavlm/WavLM-Large.pt", weights_only=True)
     cfg = WavLMConfig(checkpoint["cfg"])
     cmodel = WavLM(cfg).cuda(rank)
     cmodel.load_state_dict(checkpoint["model"])

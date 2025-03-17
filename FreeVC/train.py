@@ -7,17 +7,20 @@ from torch.cuda.amp import GradScaler, autocast
 from torch.nn.parallel import DistributedDataParallel as DDP
 from torch.utils.data import DataLoader
 
-from dataloaders import (
-    DistributedBucketSampler,
-    TextAudioSpeakerCollate,
-    TextAudioSpeakerLoader,
-)
-from losses import discriminator_loss, generator_loss
-from models import MultiPeriodDiscriminator, SynthesizerTrn
-from utils.constants import (
+from constants import (
     DATA_FILTER_LENGTH,
     DATA_TRAINING_FILES,
     DATA_VALIDATION_FILES,
+    MODEL_GIN_CHANNELS,
+    MODEL_HIDDEN_CHANNELS,
+    MODEL_INTER_CHANNELS,
+    MODEL_RESBLOCK,
+    MODEL_RESBLOCK_DILATION_SIZES,
+    MODEL_RESBLOCK_KERNEL_SIZES,
+    MODEL_SSL_DIM,
+    MODEL_UPSAMPLE_INITIAL_CHANNEL,
+    MODEL_UPSAMPLE_KERNEL_SIZES,
+    MODEL_UPSAMPLE_RATES,
     MODEL_USE_SPECTRAL_NORM,
     TRAIN_BATCH_SIZE,
     TRAIN_BETAS,
@@ -30,6 +33,13 @@ from utils.constants import (
     TRAIN_PORT,
     TRAIN_SEGMENT_SIZE,
 )
+from dataloaders import (
+    DistributedBucketSampler,
+    TextAudioSpeakerCollate,
+    TextAudioSpeakerLoader,
+)
+from losses import discriminator_loss, generator_loss
+from models import MultiPeriodDiscriminator, SynthesizerTrn
 
 torch.backends.cudnn.benchmark = True
 
@@ -79,7 +89,18 @@ def run(rank, n_gpus):
         )
 
     net_g = SynthesizerTrn(
-        DATA_FILTER_LENGTH // 2 + 1, TRAIN_SEGMENT_SIZE // DATA_FILTER_LENGTH
+        DATA_FILTER_LENGTH // 2 + 1,
+        TRAIN_SEGMENT_SIZE // DATA_FILTER_LENGTH,
+        inter_channels=MODEL_INTER_CHANNELS,
+        hidden_channels=MODEL_HIDDEN_CHANNELS,
+        resblock=MODEL_RESBLOCK,
+        resblock_kernel_sizes=MODEL_RESBLOCK_KERNEL_SIZES,
+        resblock_dilation_sizes=MODEL_RESBLOCK_DILATION_SIZES,
+        upsample_rates=MODEL_UPSAMPLE_RATES,
+        upsample_initial_channel=MODEL_UPSAMPLE_INITIAL_CHANNEL,
+        upsample_kernel_sizes=MODEL_UPSAMPLE_KERNEL_SIZES,
+        gin_channels=MODEL_GIN_CHANNELS,
+        ssl_dim=MODEL_SSL_DIM,
     ).cuda(rank)
     net_d = MultiPeriodDiscriminator(MODEL_USE_SPECTRAL_NORM).cuda(rank)
 

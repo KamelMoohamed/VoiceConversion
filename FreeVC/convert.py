@@ -8,10 +8,22 @@ import torch
 from scipy.io.wavfile import write
 from tqdm import tqdm
 
-import utils
-from mel_processing import mel_spectrogram_torch
-from models import SynthesizerTrn, extract_speaker_embedding  # Using Deep Speaker
-from wavlm import WavLM, WavLMConfig
+from constants import (
+    DATA_FILTER_LENGTH,
+    MODEL_GIN_CHANNELS,
+    MODEL_HIDDEN_CHANNELS,
+    MODEL_INTER_CHANNELS,
+    MODEL_RESBLOCK,
+    MODEL_RESBLOCK_DILATION_SIZES,
+    MODEL_RESBLOCK_KERNEL_SIZES,
+    MODEL_SSL_DIM,
+    MODEL_UPSAMPLE_INITIAL_CHANNEL,
+    MODEL_UPSAMPLE_KERNEL_SIZES,
+    MODEL_UPSAMPLE_RATES,
+    TRAIN_SEGMENT_SIZE,
+)
+from models.synthesizer import SynthesizerTrn, extract_speaker_embedding
+from utils import get_cmodel, get_content, get_hparams_from_file, load_checkpoint
 
 logging.getLogger("numba").setLevel(logging.WARNING)
 
@@ -36,20 +48,32 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     os.makedirs(args.outdir, exist_ok=True)
-    hps = utils.get_hparams_from_file(args.hpfile)
+    hps = get_hparams_from_file(args.hpfile)
 
     print("Loading model...")
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    torch.cuda.empty_cache()
+
     net_g = SynthesizerTrn(
-        hps.data.filter_length // 2 + 1,
-        hps.train.segment_size // hps.data.hop_length,
-        **hps.model,
-    ).cuda()
+        DATA_FILTER_LENGTH // 2 + 1,
+        TRAIN_SEGMENT_SIZE // DATA_FILTER_LENGTH,
+        inter_channels=MODEL_INTER_CHANNELS,
+        hidden_channels=MODEL_HIDDEN_CHANNELS,
+        resblock=MODEL_RESBLOCK,
+        resblock_kernel_sizes=MODEL_RESBLOCK_KERNEL_SIZES,
+        resblock_dilation_sizes=MODEL_RESBLOCK_DILATION_SIZES,
+        upsample_rates=MODEL_UPSAMPLE_RATES,
+        upsample_initial_channel=MODEL_UPSAMPLE_INITIAL_CHANNEL,
+        upsample_kernel_sizes=MODEL_UPSAMPLE_KERNEL_SIZES,
+        gin_channels=MODEL_GIN_CHANNELS,
+        ssl_dim=MODEL_SSL_DIM,
+    ).cuda(device)
     _ = net_g.eval()
-    print("Loading checkpoint...")
-    _ = utils.load_checkpoint(args.ptfile, net_g, None, True)
+    # print("Loading checkpoint...")
+    # _ = load_checkpoint(args.ptfile, net_g, None, True)
 
     print("Loading WavLM for content...")
-    cmodel = utils.get_cmodel(0)
+    cmodel = get_cmodel(0)
 
     print("Processing text...")
     titles, srcs, tgts = [], [], []
@@ -76,7 +100,7 @@ if __name__ == "__main__":
             # src
             wav_src, _ = librosa.load(src, sr=hps.data.sampling_rate)
             wav_src = torch.from_numpy(wav_src).to(device).unsqueeze(0)
-            c = utils.get_content(cmodel, wav_src).to(device)
+            c = get_content(cmodel, wav_src).to(device)
 
             c_lengths = (torch.ones(c.size(0)) * c.size(-1)).to(device)
 
