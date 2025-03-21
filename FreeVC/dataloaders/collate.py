@@ -6,10 +6,11 @@ from commons import rand_spec_segments, slice_segments
 class TextAudioSpeakerCollate:
     """Zero-pads model inputs and targets"""
 
-    def __init__(self, hps):
-        self.hps = hps
-        self.use_sr = hps.train.use_sr
-        self.use_spk = hps.model.use_spk
+    def __init__(self, train_use_sr, model_use_spk, data_hop_length, train_max_speclen):
+        self.use_sr = train_use_sr
+        self.use_spk = model_use_spk
+        self.data_hop_length = data_hop_length
+        self.train_max_speclen = train_max_speclen
 
     def __call__(self, batch):
         """Collate's training batch from normalized text, audio, speaker identities, and filenames"""
@@ -58,22 +59,22 @@ class TextAudioSpeakerCollate:
 
         spec_seglen = (
             spec_lengths[-1]
-            if spec_lengths[-1] < self.hps.train.max_speclen + 1
-            else self.hps.train.max_speclen + 1
+            if spec_lengths[-1] < self.train_max_speclen + 1
+            else self.train_max_speclen + 1
         )
-        wav_seglen = spec_seglen * self.hps.data.hop_length
+        wav_seglen = spec_seglen * self.data_hop_length
 
         spec_padded, ids_slice = rand_spec_segments(
             spec_padded, spec_lengths, spec_seglen
         )
         wav_padded = slice_segments(
-            wav_padded, ids_slice * self.hps.data.hop_length, wav_seglen
+            wav_padded, ids_slice * self.data_hop_length, wav_seglen
         )
 
         c_padded = slice_segments(c_padded, ids_slice, spec_seglen)[:, :, :-1]
 
         spec_padded = spec_padded[:, :, :-1]
-        wav_padded = wav_padded[:, :, : -self.hps.data.hop_length]
+        wav_padded = wav_padded[:, :, : -self.data_hop_length]
 
         if self.use_spk:
             return c_padded, spec_padded, wav_padded, spks, filenames

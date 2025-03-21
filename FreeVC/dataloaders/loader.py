@@ -1,5 +1,5 @@
 import os
-from random import random
+import random
 
 import numpy as np
 import torch
@@ -15,17 +15,28 @@ class TextAudioSpeakerLoader(torch.utils.data.Dataset):
     3) computes spectrograms from audio files.
     """
 
-    def __init__(self, audiopaths, hparams):
+    def __init__(
+        self,
+        audiopaths,
+        max_wav_value,
+        sampling_rate,
+        filter_length,
+        hop_length,
+        win_length,
+        use_sr,
+        use_spk,
+        max_speclen,
+    ):
         self.audiopaths = load_filepaths_and_text(audiopaths)
-        self.max_wav_value = hparams.data.max_wav_value
-        self.sampling_rate = hparams.data.sampling_rate
-        self.filter_length = hparams.data.filter_length
-        self.hop_length = hparams.data.hop_length
-        self.win_length = hparams.data.win_length
-        self.sampling_rate = hparams.data.sampling_rate
-        self.use_sr = hparams.train.use_sr
-        self.use_spk = hparams.model.use_spk
-        self.spec_len = hparams.train.max_speclen
+        self.max_wav_value = max_wav_value
+        self.sampling_rate = sampling_rate
+        self.filter_length = filter_length
+        self.hop_length = hop_length
+        self.win_length = win_length
+        self.sampling_rate = sampling_rate
+        self.use_sr = use_sr
+        self.use_spk = use_spk
+        self.spec_len = max_speclen
 
         random.seed(1234)
         random.shuffle(self.audiopaths)

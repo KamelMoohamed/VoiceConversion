@@ -9,11 +9,18 @@ def feature_loss(
     """
     Computes feature loss between real and generated feature maps.
     """
-    loss = sum(
-        torch.mean(torch.abs(rl.float().detach() - gl.float()))
-        for dr, dg in zip(fmap_r, fmap_g)
-        for rl, gl in zip(dr, dg)
-    )
+    loss = 0.0
+
+    for dr, dg in zip(fmap_r, fmap_g):
+        for rl, gl in zip(dr, dg):
+            if rl.shape != gl.shape:  # Ensure shape match
+                print(f"Shape mismatch: real {rl.shape}, generated {gl.shape}")
+                min_shape = tuple(min(r, g) for r, g in zip(rl.shape, gl.shape))
+                rl = rl[:, :, : min_shape[2]]  # Adjust shape
+                gl = gl[:, :, : min_shape[2]]  # Adjust shape
+
+            loss += torch.mean(torch.abs(rl.float().detach() - gl.float()))
+
     return loss * 2
 
 

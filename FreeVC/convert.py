@@ -23,9 +23,28 @@ from constants import (
     TRAIN_SEGMENT_SIZE,
 )
 from models.synthesizer import SynthesizerTrn, extract_speaker_embedding
-from utils import get_cmodel, get_content, get_hparams_from_file, load_checkpoint
+from utils import get_cmodel, get_content, get_hparams_from_file
 
 logging.getLogger("numba").setLevel(logging.WARNING)
+
+
+def load_checkpoint(checkpoint_path, model, optimizer=None):
+    if not os.path.exists(checkpoint_path):
+        print(f"Checkpoint file not found: {checkpoint_path}")
+        return None, None
+
+    checkpoint = torch.load(checkpoint_path, map_location="cpu")
+    if "module" in list(checkpoint.keys())[0]:
+        new_state_dict = {}
+        for k, v in checkpoint.items():
+            new_key = k.replace("module.", "")  # Remove 'module.' prefix
+            new_state_dict[new_key] = v
+        model.load_state_dict(new_state_dict)
+    else:
+        model.load_state_dict(checkpoint)
+
+    return model
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -69,8 +88,8 @@ if __name__ == "__main__":
         ssl_dim=MODEL_SSL_DIM,
     ).cuda(device)
     _ = net_g.eval()
-    # print("Loading checkpoint...")
-    # _ = load_checkpoint(args.ptfile, net_g, None, True)
+    print("Loading checkpoint...")
+    _ = load_checkpoint("checkpoints/best_model.pth", net_g)
 
     print("Loading WavLM for content...")
     cmodel = get_cmodel(0)
